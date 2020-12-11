@@ -6,6 +6,8 @@ import re
 import requests
 import socket
 import sys
+import random
+import string
 
 from json.decoder import JSONDecodeError
 from requests.exceptions import RequestException
@@ -16,6 +18,7 @@ from response import generate_response
 
 pattern = re.compile('var FB_PUBLIC_LOAD_DATA_ = (.*);', re.DOTALL)
 headers = {'Content-type': 'application/x-www-form-urlencoded'}
+email = False
 
 
 def main():
@@ -31,6 +34,9 @@ def main():
     except RequestException as e:
         sys.exit(e)
 
+    global email
+    email = "freebirdFormviewerViewEmailCollectionField" in r.text
+
     match = pattern.search(r.text)
     try:
         form = json.loads(match.group(1))
@@ -44,14 +50,14 @@ def main():
 
     while True:
         status = 'Successful: %i, Failed: %i' % (success, fail)
-        print(status, flush=True, end='\r')
+        print(status, flush=True, end='\n')
 
         r = [send_request(c, action, form) for _ in range(args.window_size)]
 
         for request in r:
             try:
                 resp = c.get_response(request)
-                if resp.status is not 200:
+                if resp.status != 200:
                     raise ValueError('invalid response from server')
                 text = resp.read().decode('utf-8')
                 if pattern.search(text):
@@ -63,8 +69,15 @@ def main():
 
 def send_request(conn, action, form):
     params = generate_response(form)
+    if email:
+        params.append(("emailAddress", randmail()))
+
     encoded = urlencode(params).encode('utf-8')
     return conn.request('POST', action, encoded, headers)
+
+
+def randmail(size=20, chars=string.ascii_letters):
+    return ''.join(random.choice(chars) for _ in range(size)) + ''.join('@') + ''.join(random.choice(chars) for _ in range(10)) + ''.join('.com')
 
 
 if __name__ == '__main__':

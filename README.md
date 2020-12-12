@@ -7,3 +7,6 @@ python spammer.py {insert URL here}
 ```
 
 Enjoy
+
+
+PS: I'm NOT a python dev
